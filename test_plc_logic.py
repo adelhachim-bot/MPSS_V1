@@ -40,7 +40,7 @@ def test_valve_closed_latches_start_blocked() -> None:
 def test_reset_clears_alarm_and_allows_start() -> None:
     plc = SumpPumpPlcLogic(pulse_scans=2)
     plc.scan(PlcInputs(downstream_valve_open=False, op_start=True))
-    assert plc.state.start_blocked
+    assert plc.start_blocked
 
     out = plc.scan(PlcInputs(downstream_valve_open=True, op_reset=True))
     assert out.pump_reset_cmd

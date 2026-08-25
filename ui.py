@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import streamlit as st
 from PIL import Image, ImageDraw
 
@@ -175,6 +177,23 @@ div[data-testid="stMarkdown"]:has(.mpss-faults) + div[data-testid="stHorizontalB
 .mpss-hint {
   font-size: 0.78rem; color: #64748b; margin: 0.35rem 0 0.6rem;
 }
+
+/* Live Modbus IO panel — a raw register/coil dump, like a Modbus test tool */
+.mpss-io-table { display: flex; flex-direction: column; gap: 0.32rem; }
+.mpss-io-row {
+  display: grid; grid-template-columns: minmax(6.5rem, 1.3fr) 1fr 2.2rem; align-items: center;
+  gap: 0.5rem; background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+  padding: 0.32rem 0.6rem; font-family: "IBM Plex Mono", monospace; font-size: 0.74rem;
+}
+.mpss-io-row.on { border-color: #22c55e88; background: #14532d22; }
+.mpss-io-addr { color: #64748b; }
+.mpss-io-name { color: #cbd5e1; letter-spacing: 0.02em; }
+.mpss-io-val {
+  text-align: center; font-weight: 700; border-radius: 4px; padding: 0.1rem 0;
+  color: #64748b; background: #1e293b;
+}
+.mpss-io-row.on .mpss-io-val { color: #052e16; background: #4ade80; }
+.mpss-io-empty { color: #64748b; font-size: 0.82rem; padding: 0.3rem 0; }
 </style>
 """
 
@@ -183,19 +202,11 @@ def inject_css() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-def render_header(*, linked: bool | None, link_text: str) -> None:
-    if linked is True:
-        link_html = (
-            f'<div class="mpss-link-ok"><span class="mpss-dot on"></span>{link_text}</div>'
-        )
-    elif linked is False:
-        link_html = (
-            f'<div class="mpss-link-bad"><span class="mpss-dot off"></span>{link_text}</div>'
-        )
-    else:
-        link_html = (
-            f'<div class="mpss-link-ok"><span class="mpss-dot on"></span>{link_text}</div>'
-        )
+def render_header(*, linked: bool, link_text: str) -> None:
+    kind, dot = ("ok", "on") if linked else ("bad", "off")
+    link_html = (
+        f'<div class="mpss-link-{kind}"><span class="mpss-dot {dot}"></span>{link_text}</div>'
+    )
     st.markdown(
         f"""
         <div class="mpss-hero">
@@ -231,11 +242,7 @@ def render_signal_lamps(feedback: PlantFeedback) -> None:
     ]
     parts = ['<div class="mpss-lamps">']
     for tag, on, alarm in lamps:
-        cls = "mpss-lamp"
-        if on:
-            cls += " on"
-        if alarm:
-            cls += " alarm"
+        cls = "mpss-lamp" + (" on" if on else "") + (" alarm" if alarm else "")
         parts.append(
             f'<div class="{cls}">'
             f'<div class="led"></div>'
@@ -255,17 +262,8 @@ def render_message(text: str, *, alarm: bool) -> None:
     )
 
 
-def render_schematic(
-    feedback: PlantFeedback,
-    *,
-    status: str,
-) -> None:
-    """Render a reliable native image process mimic.
-
-    Streamlit sanitizes SVG in Markdown and an embedded HTML iframe can be
-    unavailable in some browser configurations. A generated PNG avoids both
-    rendering paths while retaining an immediately readable plant picture.
-    """
+def render_schematic(feedback: PlantFeedback, *, status: str) -> None:
+    """Process mimic as a PNG — Streamlit strips SVG in Markdown."""
     running = feedback.pump_running
     starting = status == "STARTING"
     fault = feedback.pump_fault
@@ -339,6 +337,61 @@ def render_schematic(
         "the process is flowing; valve and pressure respond to each scenario."
     )
     st.image(image, width="stretch")
+
+
+def _io_rows_html(rows: list[tuple[str, str, int]], *, addr_prefix: str) -> str:
+    if not rows:
+        return '<div class="mpss-io-empty">No data yet — waiting for first poll…</div>'
+    parts = ['<div class="mpss-io-table">']
+    for address, name, value in rows:
+        on = bool(value)
+        addr = f"{addr_prefix} {address}".strip() if addr_prefix else str(address)
+        parts.append(
+            f'<div class="mpss-io-row{" on" if on else ""}">'
+            f'<span class="mpss-io-addr">{addr}</span>'
+            f'<span class="mpss-io-name">{name}</span>'
+            f'<span class="mpss-io-val">{1 if on else 0}</span>'
+            f"</div>"
+        )
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_io_panel(bridge) -> None:
+    """Raw values on the wire (registers/coils or Logix tags)."""
+    driver = getattr(bridge, "driver", "modbus")
+    label = getattr(bridge, "target_label", f"{bridge.host}:{bridge.port}")
+    if driver == "logix":
+        title = "EtherNet/IP — live tags"
+        in_hint = "MPSS → PLC (written tags)"
+        out_hint = "PLC → MPSS (read tags)"
+        in_prefix = out_prefix = ""
+    else:
+        title = "Modbus link — live IO"
+        in_hint = "MPSS → PLC (holding registers)"
+        out_hint = "PLC → MPSS (coils)"
+        in_prefix, out_prefix = "HR", "Coil"
+
+    st.markdown(f"#### {title}")
+    if bridge.state.last_io_at:
+        age_s = time.time() - bridge.state.last_io_at
+        st.caption(f"{label} · last poll {age_s:.1f}s ago")
+    else:
+        st.caption(f"Not connected yet — {label}")
+
+    col_in, col_out = st.columns(2)
+    with col_in:
+        st.markdown(f'<p class="mpss-hint">{in_hint}</p>', unsafe_allow_html=True)
+        st.markdown(
+            _io_rows_html(bridge.state.holding_registers, addr_prefix=in_prefix),
+            unsafe_allow_html=True,
+        )
+    with col_out:
+        st.markdown(f'<p class="mpss-hint">{out_hint}</p>', unsafe_allow_html=True)
+        st.markdown(
+            _io_rows_html(bridge.state.coils, addr_prefix=out_prefix),
+            unsafe_allow_html=True,
+        )
 
 
 def render_demo_script() -> None:

@@ -2,6 +2,8 @@
 
 Mining Process Simulation Sandbox — sump pump pilot (FDS Appendix A).
 
+Full walkthrough (install, run, UI, demo script, troubleshooting): **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**.
+
 ## Architecture
 
 ```
@@ -10,14 +12,12 @@ Streamlit UI (app.py + ui.py)
     ▼
 Virtual plant (simulation.py)     ←── MPSS responsibility
     │
-Modbus TCP client (plc_bridge.py)
-    │
-SoftPLC Modbus TCP server (soft_plc.py)  ←── control logic (black box)
-    runs plc_logic.py
+    ├─ Modbus TCP (plc_bridge.py) ── SoftPLC / other Modbus PLC
+    └─ EtherNet/IP (logix_bridge.py) ── GuardLogix / ControlLogix / CompactLogix
 ```
 
-The SoftPLC owns start permissives. MPSS owns plant behaviour and fault injection.
-It is a real, separate process reached over Modbus TCP — not an in-process shortcut.
+The PLC owns start permissives. MPSS owns plant behaviour and fault injection.
+Default demo: bundled SoftPLC over Modbus TCP. Optional: a real Logix over EtherNet/IP (sidebar).
 
 ## Quick start
 
