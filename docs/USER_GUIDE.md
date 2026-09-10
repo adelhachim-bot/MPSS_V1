@@ -10,48 +10,33 @@ Default demo PLC: bundled Python SoftPLC over **Modbus TCP**. Optional: a real L
 
 ## 1. What you need
 
-- Python 3.10+ (3.11 or 3.12 recommended)
-- Two terminal windows
+- Windows with Python 3.10+ (3.11 or 3.12 recommended), **Add python.exe to PATH** ticked at install
 - A browser (Streamlit opens one automatically)
 
-No hardware PLC is required. The bundled SoftPLC is a Python Modbus TCP server.
+No hardware PLC is required for the bundled SoftPLC demo.
 
 ---
 
 ## 2. Install
 
-From the project root:
+Unzip the project. Do **not** copy a `.venv` from a Mac or another PC.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-That installs Streamlit, pymodbus, pycomm3, and pytest.
+Double-click **`run.bat`**. The first run creates `.venv` and installs Streamlit, pymodbus, pycomm3, and pytest. Later runs skip that if packages are already present.
 
 ---
 
 ## 3. Run the demo
 
-**The SoftPLC must be running before the UI can connect.** Use two terminals, both with the venv activated.
+**Double-click `run.bat`.** It starts the SoftPLC (`127.0.0.1:5502`) in a window titled **MPSS SoftPLC**, then starts Streamlit. The browser should open at `http://localhost:8501`.
 
-### Terminal 1 — SoftPLC
+The header should show a green **Modbus TCP @ 127.0.0.1:5502**. If it is red, wait until the SoftPLC window prints `listening`, or allow Python in Windows Firewall.
 
-```bash
-python soft_plc.py
-```
+Close the Streamlit console to stop the UI. Close the **MPSS SoftPLC** window to stop the SoftPLC.
 
-You should see a log line similar to:
+Optional SoftPLC flags if you start it yourself:
 
-```
-SoftPLC listening on 127.0.0.1:5502 (Modbus TCP)
-```
-
-Leave this terminal running. Optional flags:
-
-```bash
-python soft_plc.py --host 127.0.0.1 --port 5502 --scan-ms 50
+```bat
+.venv\Scripts\python.exe soft_plc.py --host 127.0.0.1 --port 5502 --scan-ms 50
 ```
 
 | Flag | Default | Meaning |
@@ -59,16 +44,6 @@ python soft_plc.py --host 127.0.0.1 --port 5502 --scan-ms 50
 | `--host` | `127.0.0.1` | Bind address |
 | `--port` | `5502` | Modbus TCP port (5502 avoids privileged port 502) |
 | `--scan-ms` | `50` | PLC scan period in milliseconds |
-
-### Terminal 2 — HMI
-
-```bash
-streamlit run app.py
-```
-
-Open the URL Streamlit prints (usually `http://localhost:8501`).
-
-The header should show a green **Modbus TCP @ 127.0.0.1:5502**. If it is red, the UI cannot reach the SoftPLC — start `soft_plc.py` first, then confirm host/port in the sidebar match.
 
 ---
 

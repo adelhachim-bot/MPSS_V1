@@ -19,22 +19,15 @@ Virtual plant (simulation.py)     ←── MPSS responsibility
 The PLC owns start permissives. MPSS owns plant behaviour and fault injection.
 Default demo: bundled SoftPLC over Modbus TCP. Optional: a real Logix over EtherNet/IP (sidebar).
 
-## Quick start
+## Quick start (Windows)
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Install [Python 3.10+](https://www.python.org/downloads/) and tick **Add python.exe to PATH**. Unzip the project (do not copy a `.venv` from another PC).
 
-# Terminal 1 — SoftPLC
-python soft_plc.py
+Double-click **`run.bat`**. The first run creates `.venv` and installs packages. After that it starts the SoftPLC and the UI (`http://localhost:8501`).
 
-# Terminal 2 — UI
-streamlit run app.py
-```
+Allow Python in Windows Firewall if prompted. Close the Streamlit window to stop the UI; close the **MPSS SoftPLC** window to stop the SoftPLC.
 
-Default link: `127.0.0.1:5502` (sidebar can change host/port). The SoftPLC must be
-running before the UI can connect.
+For a real GuardLogix, use the same `run.bat`, then in the sidebar choose EtherNet/IP, enter the PLC IP, and click **Connect**.
 
 ## Demo scenarios
 
